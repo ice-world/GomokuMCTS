@@ -1,5 +1,5 @@
 class Board:
-    def __init__(self,width, height, WinCount):
+    def __init__(self, width, height, WinCount):
         self.width = width
         self.height = height
         self.WinCount = WinCount
@@ -29,7 +29,6 @@ class Board:
                 if self.winner != -1 and self.curCount >= self.winCount:
                     return True
             return False
-
 
     def has_winner(self):
         checker = self.WinnerChecker(self.WinCount)

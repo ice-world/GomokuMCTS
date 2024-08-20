@@ -15,9 +15,9 @@ class State(Board):
         self.available_choices_count = -1
         self.controller = controller
 
-    def is_connected(self,x,y):
+    def is_connected(self, x, y):
         dir = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]
-        for dx,dy in dir:
+        for dx, dy in dir:
             nx = x + dx
             ny = y + dy
             if nx < 0 or nx >= self.height or ny < 0 or ny >= self.width:
@@ -38,7 +38,7 @@ class State(Board):
                 checker.next_pos(self.board[i][j])
                 if checker.winner == self.controller:
                     connected_num[checker.curCount] += 1
-                else:
+                elif checker.winner == self.controller ^ 1:
                     connected_num[checker.curCount] -= 10
         # 判断列上的最长连续
         for j in range(0, self.width):
@@ -47,7 +47,7 @@ class State(Board):
                 checker.next_pos(self.board[i][j])
                 if checker.winner == self.controller:
                     connected_num[checker.curCount] += 1
-                else:
+                elif checker.winner == self.controller ^ 1:
                     connected_num[checker.curCount] -= 10
         # 主对角线上的最长连续
         for i in range(0, self.height):
@@ -55,10 +55,10 @@ class State(Board):
             y = 0
             checker.clear()
             while x < self.height and y < self.width:
-                checker.next_pos(self.board[i][j])
+                checker.next_pos(self.board[x][y])
                 if checker.winner == self.controller:
                     connected_num[checker.curCount] += 1
-                else:
+                elif checker.winner == self.controller ^ 1:
                     connected_num[checker.curCount] -= 10
                 x += 1
                 y += 1
@@ -67,10 +67,10 @@ class State(Board):
             y = i
             checker.clear()
             while x < self.height and y < self.width:
-                checker.next_pos(self.board[i][j])
+                checker.next_pos(self.board[x][y])
                 if checker.winner == self.controller:
                     connected_num[checker.curCount] += 1
-                else:
+                elif checker.winner == self.controller ^ 1:
                     connected_num[checker.curCount] -= 10
                 x += 1
                 y += 1
@@ -81,10 +81,10 @@ class State(Board):
             y = 0
             checker.clear()
             while x >= 0 and y < self.width:
-                checker.next_pos(self.board[i][j])
+                checker.next_pos(self.board[x][y])
                 if checker.winner == self.controller:
                     connected_num[checker.curCount] += 1
-                else:
+                elif checker.winner == self.controller ^ 1:
                     connected_num[checker.curCount] -= 10
                 x -= 1
                 y += 1
@@ -93,10 +93,10 @@ class State(Board):
             y = i
             checker.clear()
             while x >= 0 and y < self.width:
-                checker.next_pos(self.board[i][j])
+                checker.next_pos(self.board[x][y])
                 if checker.winner == self.controller:
                     connected_num[checker.curCount] += 1
-                else:
+                elif checker.winner == self.controller ^ 1:
                     connected_num[checker.curCount] -= 10
                 x -= 1
                 y += 1
@@ -114,20 +114,38 @@ class State(Board):
     def GetCurrentValue(self):
         return self.value
 
-    def ComputeValue(self):
+    def state_evaluate(self):
         count = self.connected_count()
         value = 0.0
         mul = 1
         for i in count:
             value += mul * i
             mul *= 10
+        return value
+
+    def ComputeValue(self):
+        '''
+        count = self.connected_count()
+        value = 0.0
+        mul = 1
+        for i in count:
+            value += mul * i
+            mul *= 10
+        '''
+        value = 0
+        win, winner = self.has_winner()
+        if win:
+            if winner == self.controller:
+                value = 1000000
+            else:
+                value = -1000000
         self.value = value
         return self.value
 
     def ComputeAvailableChoices(self):
         for i in range(0, self.height):
             for j in range(0, self.width):
-                if self.board[i][j] == -1 and self.is_connected(i,j):
+                if self.board[i][j] == -1 and self.is_connected(i, j):
                     self.available_choices.append((i, j))
         self.available_choices_count = len(self.available_choices)
 
@@ -153,9 +171,9 @@ class State(Board):
             self.ComputeAvailableChoices()
         next_state = State(self.width, self.height, self.WinCount, self.current_player ^ 1, self.controller)
         next_state.board = copy.deepcopy(self.board)
-        for x,y in self.available_choices:
+        for x, y in self.available_choices:
             next_state.board[x][y] = self.current_player
-            score = next_state.ComputeValue()
+            score = next_state.state_evaluate()
             if self.current_player != self.controller:
                 if score < best_score:
                     best_state = copy.deepcopy(next_state)
@@ -169,8 +187,7 @@ class State(Board):
                     best_x = x
                     best_y = y
             next_state.board[x][y] = -1
-        return best_state,best_x,best_y
-
+        return best_state, best_x, best_y
 
 
 class Node(object):
@@ -288,7 +305,7 @@ def BackUp(node, reward):
 
 
 def MCTS(node):
-    computationBudget = 5000
+    computationBudget = 1000
 
     for i in range(computationBudget):
         print("MCTS is running")
