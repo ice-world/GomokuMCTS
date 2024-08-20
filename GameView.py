@@ -40,6 +40,7 @@ class GameView:
         """处理鼠标点击事件"""
         x = event.x // self.cell_size
         y = event.y // self.cell_size
-        if x < self.game.width and y < self.game.height and self.game.board[y][x] == -1:
+        if x < self.game.width and y < self.game.height and self.game.board[x][y] == -1:
+            print(self.game.player[self.game.curPlayer].name)
             if isinstance(self.game.player[self.game.curPlayer],Player):
                 self.game.player[self.game.curPlayer].setInput(x, y)

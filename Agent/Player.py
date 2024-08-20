@@ -13,6 +13,7 @@ class Player(Agent):
         """等待用户点击并返回点击的坐标"""
         self.input_ready = False
         while not self.input_ready:
+            print("wating update")
             self.game.gameView.root.update()  # 更新Tkinter的事件循环以接收点击事件
         return self.input_x, self.input_y
 

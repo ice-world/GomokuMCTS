@@ -70,11 +70,11 @@ class Board:
             x = i
             y = 0
             checker.clear()
-            while x < self.height and y >= 0:
+            while x >= 0 and y < self.width:
                 if checker.next_pos(self.board[x][y]):
                     return True, checker.winner
-                x += 1
-                y -= 1
+                x -= 1
+                y += 1
         for i in range(1, self.width):
             x = self.height - 1
             y = i
