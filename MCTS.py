@@ -1,6 +1,7 @@
 import copy
 import math
 import random
+import sys
 
 from Board import Board
 
@@ -14,17 +15,99 @@ class State(Board):
         self.available_choices_count = -1
         self.controller = controller
 
+    def is_connected(self,x,y):
+        dir = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]
+        for dx,dy in dir:
+            nx = x + dx
+            ny = y + dy
+            if nx < 0 or nx >= self.height or ny < 0 or ny >= self.width:
+                continue
+            if self.board[nx][ny] != -1:
+                return True
+        return False
+
+    def connected_count(self):
+        checker = self.WinnerChecker(sys.maxsize)
+        connected_num = []
+        for i in range(0, max(self.width, self.height) + 1):
+            connected_num.append(0)
+        # 判断行上的最长连续
+        for i in range(0, self.height):
+            checker.clear()
+            for j in range(0, self.width):
+                checker.next_pos(self.board[i][j])
+                if checker.winner == self.controller:
+                    connected_num[checker.curCount] += 1
+                else:
+                    connected_num[checker.curCount] -= 10
+        # 判断列上的最长连续
+        for j in range(0, self.width):
+            checker.clear()
+            for i in range(0, self.height):
+                checker.next_pos(self.board[i][j])
+                if checker.winner == self.controller:
+                    connected_num[checker.curCount] += 1
+                else:
+                    connected_num[checker.curCount] -= 10
+        # 主对角线上的最长连续
+        for i in range(0, self.height):
+            x = i
+            y = 0
+            checker.clear()
+            while x < self.height and y < self.width:
+                checker.next_pos(self.board[i][j])
+                if checker.winner == self.controller:
+                    connected_num[checker.curCount] += 1
+                else:
+                    connected_num[checker.curCount] -= 10
+                x += 1
+                y += 1
+        for i in range(1, self.width):
+            x = 0
+            y = i
+            checker.clear()
+            while x < self.height and y < self.width:
+                checker.next_pos(self.board[i][j])
+                if checker.winner == self.controller:
+                    connected_num[checker.curCount] += 1
+                else:
+                    connected_num[checker.curCount] -= 10
+                x += 1
+                y += 1
+
+        # 副对角线上的最长连续
+        for i in range(0, self.height):
+            x = i
+            y = 0
+            checker.clear()
+            while x >= 0 and y < self.width:
+                checker.next_pos(self.board[i][j])
+                if checker.winner == self.controller:
+                    connected_num[checker.curCount] += 1
+                else:
+                    connected_num[checker.curCount] -= 10
+                x -= 1
+                y += 1
+        for i in range(1, self.width):
+            x = self.height - 1
+            y = i
+            checker.clear()
+            while x >= 0 and y < self.width:
+                checker.next_pos(self.board[i][j])
+                if checker.winner == self.controller:
+                    connected_num[checker.curCount] += 1
+                else:
+                    connected_num[checker.curCount] -= 10
+                x -= 1
+                y += 1
+
+        return connected_num
+
     def IsTerminal(self):
         win, winner = self.has_winner()
-        if win:
-            if winner == self.controller:
-                self.value = 100000
-            else:
-                self.value = -100000
         if self.available_choices_count == -1:
             self.ComputeAvailableChoices()
         if self.available_choices_count == 0:
-            self.value = 0.01
             return True
         return win
 
@@ -32,26 +115,62 @@ class State(Board):
         return self.value
 
     def ComputeValue(self):
-        if self.value == 0:
-            self.IsTerminal()
+        count = self.connected_count()
+        value = 0.0
+        mul = 1
+        for i in count:
+            value += mul * i
+            mul *= 10
+        self.value = value
         return self.value
 
     def ComputeAvailableChoices(self):
         for i in range(0, self.height):
             for j in range(0, self.width):
-                if self.board[i][j] == -1:
+                if self.board[i][j] == -1 and self.is_connected(i,j):
                     self.available_choices.append((i, j))
         self.available_choices_count = len(self.available_choices)
 
     def RandomComputeNextState(self):
-        if self.available_choices_count == 0:
+        if self.available_choices_count == -1:
             self.ComputeAvailableChoices()
         next_state = State(self.width, self.height, self.WinCount, self.current_player ^ 1, self.controller)
         x, y = random.choice(self.available_choices)
         next_state.board = copy.deepcopy(self.board)
         next_state.board[x][y] = self.current_player
-        next_state.IsTerminal()
         return next_state, x, y
+
+    def simple_compute_next_state(self):
+        best_state = None
+        best_score = 0
+        if self.current_player != self.controller:
+            best_score = float("inf")
+        else:
+            best_score = float("-inf")
+        best_x = 0
+        best_y = 0
+        if self.available_choices_count == -1:
+            self.ComputeAvailableChoices()
+        next_state = State(self.width, self.height, self.WinCount, self.current_player ^ 1, self.controller)
+        next_state.board = copy.deepcopy(self.board)
+        for x,y in self.available_choices:
+            next_state.board[x][y] = self.current_player
+            score = next_state.ComputeValue()
+            if self.current_player != self.controller:
+                if score < best_score:
+                    best_state = copy.deepcopy(next_state)
+                    best_score = score
+                    best_x = x
+                    best_y = y
+            else:
+                if score > best_score:
+                    best_state = copy.deepcopy(next_state)
+                    best_score = score
+                    best_x = x
+                    best_y = y
+            next_state.board[x][y] = -1
+        return best_state,best_x,best_y
+
 
 
 class Node(object):
@@ -116,6 +235,7 @@ def TreePolicy(node):
             return nextNode
     return node
 
+
 def Expand(node):
     tried_sub_node_states = [
         sub_node.get_state() for sub_node in node.get_children()
@@ -152,9 +272,9 @@ def BestChild(node, IsExploration):
 
 def DefaultPolicy(node):
     current_state = node.get_state()
-    #print("DefaultPolicy is running")
+    # print("DefaultPolicy is running")
     while not current_state.IsTerminal():
-        current_state ,x,y= current_state.RandomComputeNextState()
+        current_state, x, y = current_state.simple_compute_next_state()
 
     final_state_reward = current_state.ComputeValue()
     return final_state_reward
@@ -168,7 +288,7 @@ def BackUp(node, reward):
 
 
 def MCTS(node):
-    computationBudget = 2000
+    computationBudget = 5000
 
     for i in range(computationBudget):
         print("MCTS is running")
@@ -180,6 +300,8 @@ def MCTS(node):
     best_next_node = BestChild(node, False)
 
     return best_next_node
+
+
 '''
 def main():
     node = Node()
